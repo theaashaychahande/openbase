@@ -25,6 +25,45 @@ even write **formulas** that calculate values automatically.
 
 ---
 
+## 1.1 Why do you need this?
+
+Most people end up managing important information in places that do not really
+work well as the amount of data grows:
+
+- **Spreadsheets (Excel / Google Sheets)** are great to look at, but they are
+  weak at keeping data *consistent*. There is nothing stopping someone from
+  typing "Paid", "paid ", or "PAD" in a status column — and then filters and
+  totals quietly break.
+- **Documents / notes** cannot be sorted, filtered, linked, or recalculated at
+  all. You read them page by page.
+- **Full databases (SQL)** can do everything — but you have to write code and
+  understand databases to use them.
+
+openbase sits in between: **spreadsheet *ease* with database *and* structure**.
+
+It helps you when you need to:
+
+1. **Keep the same type of information in one organised list** — products,
+   orders, contacts, tasks, inventory, expenses, anything with rows.
+2. **Make sure data is consistent and clean** — single-select / checkbox
+   columns only allow the options you set, so nobody can type a typo.
+3. **Find things fast** — search across all text, filter by any rule, and sort
+   by any column, and the app remembers how you set it up.
+4. **See your work in different ways** — every table can be a Grid
+   (detailed list) or a Kanban board (drag-and-drop cards) without changing
+   your data.
+5. **Connect related records** — link an order to its products, a task to its
+   project, a patient to its appointments, instead of copy-pasting names.
+6. **Automate calculations** — formulas total up prices, apply IF logic, join
+   text, and recalculate themselves whenever the inputs change.
+7. **Never lose the history of a record** — each row has its own detail page
+   and files can be attached to it.
+
+In short: **you need openbase when you want a spreadsheet that behaves like a
+real database** — without learning anything about databases.
+
+---
+
 ## 2. What do you need before you start?
 
 openbase has two parts that must be running, and a database that must be set up
