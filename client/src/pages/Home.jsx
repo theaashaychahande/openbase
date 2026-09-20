@@ -42,6 +42,12 @@ function Home() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{user.email}</span>
             <Link
+              to="/app"
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              Open app
+            </Link>
+            <Link
               to="/settings"
               className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
             >

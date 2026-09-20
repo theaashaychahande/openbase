@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Settings from './pages/Settings'
 import Signup from './pages/Signup'
+import Workspace from './pages/Workspace'
 
 function App() {
   return (
@@ -11,9 +12,12 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/app" element={<Workspace />} />
+          <Route path="/app/:baseId" element={<Workspace />} />
+          <Route path="/app/:baseId/:tableId" element={<Workspace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

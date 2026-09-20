@@ -31,4 +31,16 @@ export const api = {
     request(`/api/credentials/${id}`, { method: 'DELETE', token }),
   testCredential: (token, { type, value }) =>
     request('/api/credentials/test', { method: 'POST', token, body: { type, value } }),
+  bases: (token) => request('/api/bases', { token }),
+  createBase: (token, name) =>
+    request('/api/bases', { method: 'POST', token, body: { name } }),
+  renameBase: (token, id, name) =>
+    request(`/api/bases/${id}`, { method: 'PATCH', token, body: { name } }),
+  deleteBase: (token, id) => request(`/api/bases/${id}`, { method: 'DELETE', token }),
+  tables: (token, baseId) => request(`/api/bases/${baseId}/tables`, { token }),
+  createTable: (token, baseId, name) =>
+    request(`/api/bases/${baseId}/tables`, { method: 'POST', token, body: { name } }),
+  renameTable: (token, id, name) =>
+    request(`/api/tables/${id}`, { method: 'PATCH', token, body: { name } }),
+  deleteTable: (token, id) => request(`/api/tables/${id}`, { method: 'DELETE', token }),
 }
