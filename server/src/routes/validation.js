@@ -32,3 +32,10 @@ export function parseRecordData(value) {
   if (typeof value !== 'object' || Array.isArray(value)) return undefined
   return value
 }
+
+// view_config: defaults to {} when omitted; must be a plain object when provided.
+export function parseViewConfig(value) {
+  if (value === undefined || value === null) return {}
+  if (typeof value !== 'object' || Array.isArray(value)) return undefined
+  return value
+}

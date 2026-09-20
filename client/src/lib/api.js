@@ -42,6 +42,8 @@ export const api = {
     request(`/api/bases/${baseId}/tables`, { method: 'POST', token, body: { name } }),
   renameTable: (token, id, name) =>
     request(`/api/tables/${id}`, { method: 'PATCH', token, body: { name } }),
+  updateTable: (token, id, updates) =>
+    request(`/api/tables/${id}`, { method: 'PATCH', token, body: updates }),
   deleteTable: (token, id) => request(`/api/tables/${id}`, { method: 'DELETE', token }),
   fields: (token, tableId) => request(`/api/tables/${tableId}/fields`, { token }),
   createField: (token, tableId, { name, type, options, position }) =>

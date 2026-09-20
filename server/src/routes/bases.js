@@ -96,7 +96,7 @@ router.get('/:baseId/tables', async (req, res) => {
 
   const { data, error: listErr } = await supabaseAdmin
     .from('tables')
-    .select('id, base_id, name, position')
+    .select('id, base_id, name, position, view_config')
     .eq('base_id', base.id)
     .order('position', { ascending: true })
     .order('name', { ascending: true })
@@ -121,7 +121,7 @@ router.post('/:baseId/tables', async (req, res) => {
   const { data, error: insertErr } = await supabaseAdmin
     .from('tables')
     .insert({ base_id: base.id, name, position })
-    .select('id, base_id, name, position')
+    .select('id, base_id, name, position, view_config')
     .single()
 
   if (insertErr) {

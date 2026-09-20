@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { api } from '../lib/api'
 import Grid from '../components/Grid'
+import Kanban from '../components/Kanban'
 import Sidebar from '../components/Sidebar'
 import TableTabs from '../components/TableTabs'
 
@@ -13,6 +14,7 @@ function Workspace() {
 
   const [bases, setBases] = useState([])
   const [tablesFor, setTablesFor] = useState({ baseId: null, tables: [] })
+  const [viewOverrides, setViewOverrides] = useState({})
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -48,6 +50,32 @@ function Workspace() {
   }, [token, baseId])
 
   const tables = tablesFor.baseId === baseId ? tablesFor.tables : []
+
+  const table = tables.find((t) => t.id === tableId) || null
+  const viewConfig = table
+    ? (viewOverrides[table.id] ?? table.view_config ?? {})
+    : {}
+  const mode = viewConfig.mode === 'kanban' ? 'kanban' : 'grid'
+
+  async function saveViewConfig(patch) {
+    if (!table) return
+    const next = { ...viewConfig, ...patch }
+    setViewOverrides((v) => ({ ...v, [table.id]: next }))
+    setTablesFor((current) => {
+      if (current.baseId !== baseId) return current
+      return {
+        baseId: current.baseId,
+        tables: current.tables.map((t) =>
+          t.id === table.id ? { ...t, view_config: next } : t,
+        ),
+      }
+    })
+    try {
+      await api.updateTable(token, table.id, { view_config: next })
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   async function run(fn) {
     try {
@@ -183,12 +211,48 @@ function Workspace() {
                 onDelete={actions.deleteTable}
                 onSelect={(id) => navigate(`/app/${baseId}/${id}`)}
               />
+              {tableId && (
+                <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2">
+                  <div className="inline-flex rounded-lg bg-gray-100 p-0.5">
+                    <button
+                      onClick={() => saveViewConfig({ mode: 'grid' })}
+                      className={`rounded-md px-3 py-1 text-sm font-medium ${
+                        mode === 'grid'
+                          ? 'bg-white text-indigo-600 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Grid
+                    </button>
+                    <button
+                      onClick={() => saveViewConfig({ mode: 'kanban' })}
+                      className={`rounded-md px-3 py-1 text-sm font-medium ${
+                        mode === 'kanban'
+                          ? 'bg-white text-indigo-600 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Kanban
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="flex-1 overflow-hidden bg-white">
                 {tableId ? (
-                  <Grid key={tableId} token={token} tableId={tableId} />
+                  mode === 'kanban' ? (
+                    <Kanban
+                      key={tableId}
+                      token={token}
+                      tableId={tableId}
+                      viewConfig={viewConfig}
+                      onConfigChange={saveViewConfig}
+                    />
+                  ) : (
+                    <Grid key={tableId} token={token} tableId={tableId} tables={tables} />
+                  )
                 ) : (
                   <div className="flex h-full items-center justify-center">
-                    <p className="text-sm text-gray-400">Select a table to open the grid.</p>
+                    <p className="text-sm text-gray-400">Select a table to open it.</p>
                   </div>
                 )}
               </div>

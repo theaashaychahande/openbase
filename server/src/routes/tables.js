@@ -8,11 +8,31 @@ import {
   parsePosition,
   parseOptions,
   parseRecordData,
+  parseViewConfig,
 } from './validation.js'
 
 const router = Router()
 
 router.use(requireAuth)
+
+// Resolves the linked_record target table: must exist in the same base the
+// user already proved they own (the current table becomes the authority).
+async function resolveLinkedTableId(targetId, currentBaseId) {
+  if (!targetId || typeof targetId !== 'string') {
+    return { error: 'linked_record requires options.table_id' }
+  }
+  const { data, error } = await supabaseAdmin
+    .from('tables')
+    .select('id')
+    .eq('id', targetId)
+    .eq('base_id', currentBaseId)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!data) {
+    return { error: 'linked_record target table does not exist in this base' }
+  }
+  return { table_id: data.id }
+}
 
 router.get('/:tableId', async (req, res) => {
   const { table, error, status, message } = await accessibleTable(req.params.tableId, req.user.id)
@@ -20,7 +40,7 @@ router.get('/:tableId', async (req, res) => {
   if (!table) return res.status(status).json({ error: message })
 
   res.json({
-    table: { id: table.id, base_id: table.base_id, name: table.name, position: table.position },
+    table: { id: table.id, base_id: table.base_id, name: table.name, position: table.position, view_config: table.view_config },
   })
 })
 
@@ -34,15 +54,20 @@ router.patch('/:tableId', async (req, res) => {
   if (name) updates.name = name
   const position = parsePosition(req.body)
   if (position !== undefined) updates.position = position
+  const viewConfig = parseViewConfig(req.body?.view_config)
+  if (viewConfig === undefined) {
+    return res.status(400).json({ error: 'view_config must be a JSON object' })
+  }
+  if (req.body?.view_config !== undefined) updates.view_config = viewConfig
   if (Object.keys(updates).length === 0) {
-    return res.status(400).json({ error: 'nothing to update (send name and/or position)' })
+    return res.status(400).json({ error: 'nothing to update (send name, position and/or view_config)' })
   }
 
   const { data, error: updateErr } = await supabaseAdmin
     .from('tables')
     .update(updates)
     .eq('id', table.id)
-    .select('id, base_id, name, position')
+    .select('id, base_id, name, position, view_config')
     .single()
 
   if (updateErr) {
@@ -98,6 +123,12 @@ router.post('/:tableId/fields', async (req, res) => {
   const options = parseOptions(req.body?.options)
   if (options === undefined) {
     return res.status(400).json({ error: 'options must be a JSON object' })
+  }
+  if (type === 'linked_record') {
+    const target = await resolveLinkedTableId(options?.table_id, table.base_id)
+    if (target.error) {
+      return res.status(400).json({ error: target.error })
+    }
   }
   const position = parsePosition(req.body)
 

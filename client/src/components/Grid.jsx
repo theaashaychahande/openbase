@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import {
   AttachmentControl,
+  LinkedRecordControl,
   MultiSelectControl,
   SingleSelectControl,
 } from './FieldControls'
@@ -87,9 +88,10 @@ function TextCell({ field, value, editing, onStart, onCommit, onCancel }) {
   )
 }
 
-function Grid({ token, tableId }) {
+function Grid({ token, tableId, tables = [] }) {
   const [fields, setFields] = useState([])
   const [records, setRecords] = useState([])
+  const [linkedByField, setLinkedByField] = useState({})
   const [loadedFor, setLoadedFor] = useState(null)
   const [error, setError] = useState('')
 
@@ -100,6 +102,7 @@ function Grid({ token, tableId }) {
   const [columnName, setColumnName] = useState('')
   const [columnType, setColumnType] = useState('text')
   const [columnChoices, setColumnChoices] = useState('')
+  const [columnLinkId, setColumnLinkId] = useState('')
   const [modalSaving, setModalSaving] = useState(false)
   const [modalError, setModalError] = useState('')
 
@@ -200,6 +203,40 @@ function Grid({ token, tableId }) {
   }, [token, tableId])
 
   useEffect(() => {
+    if (!token) return
+    const linkedFields = fields.filter(
+      (f) => f.type === 'linked_record' && f.options?.table_id,
+    )
+    if (linkedFields.length === 0) return
+    let active = true
+    Promise.all(
+      linkedFields.map(async (field) => {
+        const { fields: targetFields, records: targetRecords } = await Promise.all([
+          api.fields(token, field.options.table_id),
+          api.records(token, field.options.table_id),
+        ])
+        return [
+          field.id,
+          {
+            tableId: field.options.table_id,
+            records: targetRecords,
+            primaryField: targetFields[0] || null,
+          },
+        ]
+      }),
+    )
+      .then((entries) => {
+        if (active) setLinkedByField(Object.fromEntries(entries))
+      })
+      .catch(() => {
+        if (active) setLinkedByField({})
+      })
+    return () => {
+      active = false
+    }
+  }, [token, fields])
+
+  useEffect(() => {
     const timers = timersRef.current
     return () => {
       for (const id of Object.keys(timers)) flushRecord(id)
@@ -242,19 +279,20 @@ function Grid({ token, tableId }) {
     e.preventDefault()
     const name = columnName.trim()
     if (!name) return
+    if (columnType === 'linked_record' && !columnLinkId) return
     setModalSaving(true)
     setModalError('')
     try {
-      const choices = TYPES_WITH_CHOICES.includes(columnType)
-        ? columnChoices
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : []
+      const options =
+        columnType === 'linked_record'
+          ? { table_id: columnLinkId }
+          : TYPES_WITH_CHOICES.includes(columnType)
+            ? { choices: columnChoices.split(',').map((s) => s.trim()).filter(Boolean) }
+            : {}
       const res = await api.createField(token, tableId, {
         name,
         type: columnType,
-        options: { choices },
+        options,
         position: fields.length,
       })
       setFields((fs) => [...fs, res.field])
@@ -262,6 +300,7 @@ function Grid({ token, tableId }) {
       setColumnName('')
       setColumnType('text')
       setColumnChoices('')
+      setColumnLinkId('')
       setColumnModal(false)
     } catch (err) {
       setModalError(err.message)
@@ -337,9 +376,12 @@ function Grid({ token, tableId }) {
         )
       case 'linked_record':
         return (
-          <div className="px-3 py-2 text-xs text-gray-400">
-            {Array.isArray(value) ? `${value.length} link(s)` : ''}
-          </div>
+          <LinkedRecordControl
+            compact
+            linked={linkedByField[fieldId]}
+            value={value}
+            onChange={(v) => updateCell(recordId, fieldId, v)}
+          />
         )
       default:
         return (
@@ -558,6 +600,33 @@ function Grid({ token, tableId }) {
                   />
                 </div>
               )}
+              {columnType === 'linked_record' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="column-link">
+                    Linked table
+                  </label>
+                  <select
+                    id="column-link"
+                    value={columnLinkId}
+                    onChange={(e) => setColumnLinkId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="">Select a table…</option>
+                    {tables
+                      .filter((t) => t.id !== tableId)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                  {tables.length <= 1 && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Create another table first to link to it.
+                    </p>
+                  )}
+                </div>
+              )}
               {modalError && <p className="text-sm text-red-600">{modalError}</p>}
               <div className="flex justify-end gap-2">
                 <button
@@ -569,7 +638,11 @@ function Grid({ token, tableId }) {
                 </button>
                 <button
                   type="submit"
-                  disabled={modalSaving || !columnName.trim()}
+                  disabled={
+                    modalSaving ||
+                    !columnName.trim() ||
+                    (columnType === 'linked_record' && !columnLinkId)
+                  }
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {modalSaving ? 'Adding…' : 'Add column'}
@@ -584,6 +657,7 @@ function Grid({ token, tableId }) {
           <RecordModal
             record={openRecord}
             fields={fields}
+            linked={linkedByField}
             onFieldChange={(fieldId, value) => updateCell(openRecord.id, fieldId, value)}
             onAddChoice={addFieldChoice}
             onUploadFile={(fieldId, file) => uploadRecordFile(openRecord.id, fieldId, file)}

@@ -1,6 +1,91 @@
 import { useRef, useState } from 'react'
+import { formatLinkLabel } from '../lib/recordUtils'
 
 const CHOICES_ADD_VALUE = '__add__'
+
+export function LinkedRecordControl({ linked, value, onChange, compact = false }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const selectedIds = Array.isArray(value) ? value : []
+
+  function toggle(recordId) {
+    onChange(
+      selectedIds.includes(recordId)
+        ? selectedIds.filter((id) => id !== recordId)
+        : [...selectedIds, recordId],
+    )
+  }
+
+  const records = linked?.records ?? []
+  const labelOf = (recordId) => formatLinkLabel(linked, recordId) || recordId
+
+  const selected = selectedIds
+    .map((id) => records.find((r) => r.id === id))
+    .filter(Boolean)
+
+  const filtered = records.filter((record) => {
+    const label = formatLinkLabel(linked, record.id).toLowerCase()
+    return !query || label.includes(query.toLowerCase())
+  })
+
+  const triggerClass = compact
+    ? 'w-full truncate px-3 py-2 text-left text-sm text-gray-700 hover:bg-amber-50'
+    : 'w-full truncate px-3 py-2 text-left text-sm text-gray-700 hover:bg-amber-50 border-b border-gray-100'
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((o) => !o)} className={triggerClass}>
+        {selected.length
+          ? selected.map((r) => labelOf(r.id)).join(', ')
+          : recordLabelFallback(linked, selectedIds) || '\u00A0'}
+      </button>
+      {linked && selectedIds.some((id) => !linked.records?.some((r) => r.id === id)) && (
+        <p className="px-3 pb-1 text-[10px] text-amber-600">
+          Some linked records were deleted.
+        </p>
+      )}
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-1 top-1 z-50 mt-px w-72 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search records…"
+              className="mb-1 w-full rounded border border-gray-200 px-2 py-1 text-sm outline-none focus:border-indigo-400"
+            />
+            <div className="max-h-56 overflow-y-auto">
+              {filtered.length === 0 && (
+                <p className="px-1 py-2 text-xs text-gray-400">No matching records.</p>
+              )}
+              {filtered.map((record) => (
+                <label
+                  key={record.id}
+                  className="flex items-center gap-2 rounded px-1 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(record.id)}
+                    onChange={() => toggle(record.id)}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  <span className="truncate">{labelOf(record.id)}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function recordLabelFallback(linked, selectedIds) {
+  if (!linked) return selectedIds.length ? selectedIds.join(', ') : ''
+  if (selectedIds.length === 0) return ''
+  return selectedIds.map((id) => formatLinkLabel(linked, id) || '?').join(', ')
+}
 
 export function SingleSelectControl({ choices, value, onChange, onAddChoice }) {
   const [adding, setAdding] = useState(false)

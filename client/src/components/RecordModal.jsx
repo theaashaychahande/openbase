@@ -1,5 +1,6 @@
 import {
   AttachmentControl,
+  LinkedRecordControl,
   MultiSelectControl,
   SingleSelectControl,
 } from './FieldControls'
@@ -50,6 +51,7 @@ function FieldTextInput({ field, value, onChange }) {
 function RecordModal({
   record,
   fields,
+  linked,
   onFieldChange,
   onAddChoice,
   onUploadFile,
@@ -93,6 +95,14 @@ function RecordModal({
             value={value}
             onUpload={(file) => onUploadFile(field.id, file)}
             onRemove={(i) => onRemoveFile(field.id, i)}
+          />
+        )
+      case 'linked_record':
+        return (
+          <LinkedRecordControl
+            linked={linked?.[field.id]}
+            value={value}
+            onChange={(v) => onFieldChange(field.id, v)}
           />
         )
       default:
