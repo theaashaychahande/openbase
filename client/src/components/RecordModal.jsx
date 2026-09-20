@@ -105,6 +105,12 @@ function RecordModal({
             onChange={(v) => onFieldChange(field.id, v)}
           />
         )
+      case 'formula':
+        return (
+          <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            {value === null || value === undefined ? '\u00A0' : String(value)}
+          </div>
+        )
       default:
         return <FieldTextInput field={field} value={value} onChange={(v) => onFieldChange(field.id, v)} />
     }

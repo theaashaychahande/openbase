@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
+import { validateFormula } from '../lib/formula.js'
 import { requireAuth } from '../middleware/auth.js'
 import { accessibleField, accessibleTable } from '../lib/ownership.js'
 import { ALLOWED_FIELD_TYPES, parseName, parsePosition, parseOptions } from './validation.js'
@@ -77,6 +78,17 @@ router.patch('/:fieldId', async (req, res) => {
     const target = await resolveLinkedTableId(nextOptions.table_id, table.base_id)
     if (target.error) {
       return res.status(400).json({ error: target.error })
+    }
+  }
+  if (nextType === 'formula') {
+    const { data: existingFields } = await supabaseAdmin
+      .from('fields')
+      .select('id, table_id, name, type, options, position')
+      .eq('table_id', field.table_id)
+    const selfName = existingFields?.find((f) => f.id === field.id)?.name
+    const err = validateFormula(existingFields ?? [], nextOptions?.formula, selfName)
+    if (err) {
+      return res.status(400).json({ error: err })
     }
   }
 

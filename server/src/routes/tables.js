@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { supabaseAdmin } from '../lib/supabase.js'
+import { computeFormulaValues, validateFormula } from '../lib/formula.js'
 import { requireAuth } from '../middleware/auth.js'
 import { accessibleTable } from '../lib/ownership.js'
 import {
@@ -130,6 +131,16 @@ router.post('/:tableId/fields', async (req, res) => {
       return res.status(400).json({ error: target.error })
     }
   }
+  if (type === 'formula') {
+    const { data: existingFields } = await supabaseAdmin
+      .from('fields')
+      .select('id, name, type, options, position')
+      .eq('table_id', table.id)
+    const err = validateFormula(existingFields ?? [], options?.formula)
+    if (err) {
+      return res.status(400).json({ error: err })
+    }
+  }
   const position = parsePosition(req.body)
 
   const { data, error: insertErr } = await supabaseAdmin
@@ -165,7 +176,9 @@ router.get('/:tableId/records', async (req, res) => {
   if (listErr) {
     return res.status(500).json({ error: listErr.message })
   }
-  res.json({ records: data })
+  const fieldsQuery = await tableFields(table.id)
+  const fields = fieldsQuery.error ? [] : fieldsQuery.data
+  res.json({ records: data.map((record) => ({ ...record, data: computeFormulaValues(fields, record.data) })) })
 })
 
 router.post('/:tableId/records', async (req, res) => {
@@ -178,9 +191,12 @@ router.post('/:tableId/records', async (req, res) => {
     return res.status(400).json({ error: 'data must be a JSON object of {field_id: value} pairs' })
   }
 
+  const fieldsQuery = await tableFields(table.id)
+  const fields = fieldsQuery.error ? [] : fieldsQuery.data
+
   const { data: record, error: insertErr } = await supabaseAdmin
     .from('records')
-    .insert({ table_id: table.id, data })
+    .insert({ table_id: table.id, data: computeFormulaValues(fields, data) })
     .select('id, table_id, data, created_at, updated_at')
     .single()
 
@@ -189,5 +205,15 @@ router.post('/:tableId/records', async (req, res) => {
   }
   res.status(201).json({ record })
 })
+
+// Shared helper: every column of a table, ordered by position.
+async function tableFields(tableId) {
+  return supabaseAdmin
+    .from('fields')
+    .select('id, table_id, name, type, options, position')
+    .eq('table_id', tableId)
+    .order('position', { ascending: true })
+    .order('name', { ascending: true })
+}
 
 export default router

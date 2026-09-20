@@ -20,6 +20,7 @@ const FIELD_TYPE_OPTIONS = [
   'date',
   'attachment',
   'linked_record',
+  'formula',
 ]
 
 function displayValue(field, value) {
@@ -104,6 +105,7 @@ function Grid({ token, tableId, tables = [], query }) {
   const [columnType, setColumnType] = useState('text')
   const [columnChoices, setColumnChoices] = useState('')
   const [columnLinkId, setColumnLinkId] = useState('')
+  const [columnFormula, setColumnFormula] = useState('')
   const [modalSaving, setModalSaving] = useState(false)
   const [modalError, setModalError] = useState('')
 
@@ -281,15 +283,18 @@ function Grid({ token, tableId, tables = [], query }) {
     const name = columnName.trim()
     if (!name) return
     if (columnType === 'linked_record' && !columnLinkId) return
+    if (columnType === 'formula' && !columnFormula.trim()) return
     setModalSaving(true)
     setModalError('')
     try {
       const options =
         columnType === 'linked_record'
           ? { table_id: columnLinkId }
-          : TYPES_WITH_CHOICES.includes(columnType)
-            ? { choices: columnChoices.split(',').map((s) => s.trim()).filter(Boolean) }
-            : {}
+          : columnType === 'formula'
+            ? { formula: columnFormula.trim() }
+            : TYPES_WITH_CHOICES.includes(columnType)
+              ? { choices: columnChoices.split(',').map((s) => s.trim()).filter(Boolean) }
+              : {}
       const res = await api.createField(token, tableId, {
         name,
         type: columnType,
@@ -302,6 +307,7 @@ function Grid({ token, tableId, tables = [], query }) {
       setColumnType('text')
       setColumnChoices('')
       setColumnLinkId('')
+      setColumnFormula('')
       setColumnModal(false)
     } catch (err) {
       setModalError(err.message)
@@ -383,6 +389,12 @@ function Grid({ token, tableId, tables = [], query }) {
             value={value}
             onChange={(v) => updateCell(recordId, fieldId, v)}
           />
+        )
+      case 'formula':
+        return (
+          <div className="px-3 py-2 text-sm text-gray-700">
+            {displayValue(field, value) || '\u00A0'}
+          </div>
         )
       default:
         return (
@@ -634,6 +646,25 @@ function Grid({ token, tableId, tables = [], query }) {
                   )}
                 </div>
               )}
+              {columnType === 'formula' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="column-formula">
+                    Expression
+                  </label>
+                  <textarea
+                    id="column-formula"
+                    rows={3}
+                    value={columnFormula}
+                    onChange={(e) => setColumnFormula(e.target.value)}
+                    placeholder={`e.g. {Price} * {Quantity}`}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Reference fields with {'{Name}'}. Operators: + - * /, comparisons. Functions:
+                    SUM(...), IF(cond, a, b), CONCAT(..., ...). Formula fields update automatically.
+                  </p>
+                </div>
+              )}
               {modalError && <p className="text-sm text-red-600">{modalError}</p>}
               <div className="flex justify-end gap-2">
                 <button
@@ -648,7 +679,8 @@ function Grid({ token, tableId, tables = [], query }) {
                   disabled={
                     modalSaving ||
                     !columnName.trim() ||
-                    (columnType === 'linked_record' && !columnLinkId)
+                    (columnType === 'linked_record' && !columnLinkId) ||
+                    (columnType === 'formula' && !columnFormula.trim())
                   }
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >

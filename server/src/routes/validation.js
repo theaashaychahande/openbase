@@ -8,6 +8,7 @@ export const ALLOWED_FIELD_TYPES = [
   'date',
   'attachment',
   'linked_record',
+  'formula',
 ]
 
 export function parseName(body) {
