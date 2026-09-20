@@ -6,6 +6,7 @@ import Grid from '../components/Grid'
 import Kanban from '../components/Kanban'
 import Sidebar from '../components/Sidebar'
 import TableTabs from '../components/TableTabs'
+import TableToolbar from '../components/TableToolbar'
 
 function Workspace() {
   const { baseId, tableId } = useParams()
@@ -56,6 +57,11 @@ function Workspace() {
     ? (viewOverrides[table.id] ?? table.view_config ?? {})
     : {}
   const mode = viewConfig.mode === 'kanban' ? 'kanban' : 'grid'
+  const queryConfig = viewConfig[mode] ?? {}
+
+  async function saveQueryConfig(patch) {
+    saveViewConfig({ [mode]: { ...queryConfig, ...patch } })
+  }
 
   async function saveViewConfig(patch) {
     if (!table) return
@@ -237,6 +243,15 @@ function Workspace() {
                   </div>
                 </div>
               )}
+              {tableId && (
+                <TableToolbar
+                  key={tableId}
+                  token={token}
+                  tableId={tableId}
+                  query={queryConfig}
+                  onChange={saveQueryConfig}
+                />
+              )}
               <div className="flex-1 overflow-hidden bg-white">
                 {tableId ? (
                   mode === 'kanban' ? (
@@ -245,10 +260,17 @@ function Workspace() {
                       token={token}
                       tableId={tableId}
                       viewConfig={viewConfig}
+                      query={queryConfig}
                       onConfigChange={saveViewConfig}
                     />
                   ) : (
-                    <Grid key={tableId} token={token} tableId={tableId} tables={tables} />
+                    <Grid
+                      key={tableId}
+                      token={token}
+                      tableId={tableId}
+                      tables={tables}
+                      query={queryConfig}
+                    />
                   )
                 ) : (
                   <div className="flex h-full items-center justify-center">

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
+import { applyQuery } from '../lib/query'
 import {
   AttachmentControl,
   LinkedRecordControl,
@@ -88,7 +89,7 @@ function TextCell({ field, value, editing, onStart, onCommit, onCancel }) {
   )
 }
 
-function Grid({ token, tableId, tables = [] }) {
+function Grid({ token, tableId, tables = [], query }) {
   const [fields, setFields] = useState([])
   const [records, setRecords] = useState([])
   const [linkedByField, setLinkedByField] = useState({})
@@ -402,6 +403,10 @@ function Grid({ token, tableId, tables = [] }) {
 
   const loading = loadedFor !== tableId
   const openRecord = records.find((r) => r.id === openRecordId) || null
+  const visibleRecords = useMemo(
+    () => applyQuery(fields, records, query),
+    [fields, records, query],
+  )
 
   return (
     <div className="flex h-full flex-col">
@@ -488,7 +493,7 @@ function Grid({ token, tableId, tables = [] }) {
               </tr>
             </thead>
             <tbody>
-              {records.map((record, i) => (
+              {visibleRecords.map((record, i) => (
                 <tr key={record.id} className="group">
                   <td className="border-b border-r border-gray-200 bg-gray-50 px-2 py-2 text-right align-middle">
                     <span className="text-xs text-gray-400">{i + 1}</span>
@@ -531,8 +536,10 @@ function Grid({ token, tableId, tables = [] }) {
           </table>
         )}
 
-        {fields.length > 0 && records.length === 0 && (
-          <p className="px-4 py-6 text-sm text-gray-400">No rows yet.</p>
+        {fields.length > 0 && visibleRecords.length === 0 && (
+          <p className="px-4 py-6 text-sm text-gray-400">
+            {records.length === 0 ? 'No rows yet.' : 'No rows match the filter or search.'}
+          </p>
         )}
       </div>
 

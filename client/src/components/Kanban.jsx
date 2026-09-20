@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { applyQuery } from '../lib/query'
 import { primaryValueOf } from '../lib/recordUtils'
 
-function Kanban({ token, tableId, viewConfig, onConfigChange }) {
+function Kanban({ token, tableId, viewConfig, query, onConfigChange }) {
   const [fields, setFields] = useState([])
   const [records, setRecords] = useState([])
   const [loadedFor, setLoadedFor] = useState(null)
@@ -39,6 +40,7 @@ function Kanban({ token, tableId, viewConfig, onConfigChange }) {
   const groupField =
     fields.find((f) => f.type === 'single_select' && f.id === viewConfig?.kanban_field_id) ||
     null
+  const listRecords = applyQuery(fields, records, query)
 
   if (loading) {
     return (
@@ -57,11 +59,11 @@ function Kanban({ token, tableId, viewConfig, onConfigChange }) {
   }
 
   function buildColumns() {
-    const present = new Set(records.map(valueOf))
+    const present = new Set(listRecords.map(valueOf))
     const choices = groupField?.options?.choices ?? []
     const choiceKeys = choices.filter((c) => present.has(c))
     const extras = [...present].filter((v) => v && !choiceKeys.includes(v)).sort()
-    const hasEmpty = records.some((r) => valueOf(r) === '')
+    const hasEmpty = listRecords.some((r) => valueOf(r) === '')
     return [
       ...choiceKeys.map((key) => ({ key, label: key })),
       ...extras.map((key) => ({ key, label: key })),
@@ -133,12 +135,16 @@ function Kanban({ token, tableId, viewConfig, onConfigChange }) {
         </div>
       ) : columns.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-gray-400">No data to show.</p>
+          <p className="text-sm text-gray-400">
+            {listRecords.length === 0
+              ? 'No rows match the filter or search.'
+              : 'No data to show.'}
+          </p>
         </div>
       ) : (
         <div className="flex flex-1 gap-3 overflow-x-auto p-4">
           {columns.map((column) => {
-            const items = records.filter((r) => valueOf(r) === column.key)
+            const items = listRecords.filter((r) => valueOf(r) === column.key)
             return (
               <div
                 key={column.key || '__empty__'}
