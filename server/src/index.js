@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js'
 import basesRoutes from './routes/bases.js'
 import credentialsRoutes from './routes/credentials.js'
 import fieldsRoutes from './routes/fields.js'
+import filesRoutes from './routes/files.js'
 import recordsRoutes from './routes/records.js'
 import tablesRoutes from './routes/tables.js'
 
@@ -23,6 +24,7 @@ app.use('/api/credentials', credentialsRoutes)
 app.use('/api/bases', basesRoutes)
 app.use('/api/tables', tablesRoutes)
 app.use('/api/fields', fieldsRoutes)
+app.use('/api/files', filesRoutes)
 app.use('/api/records', recordsRoutes)
 
 app.use((err, req, res, next) => {

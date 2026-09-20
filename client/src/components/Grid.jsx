@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
+import {
+  AttachmentControl,
+  MultiSelectControl,
+  SingleSelectControl,
+} from './FieldControls'
+import RecordModal from './RecordModal'
 
 const TYPES_WITH_CHOICES = ['single_select', 'multi_select']
 const FIELD_TYPE_OPTIONS = [
@@ -81,53 +87,6 @@ function TextCell({ field, value, editing, onStart, onCommit, onCancel }) {
   )
 }
 
-function MultiSelectCell({ value, choices = [], onCommit }) {
-  const [open, setOpen] = useState(false)
-  const current = Array.isArray(value) ? value : []
-
-  function toggle(choice) {
-    const next = current.includes(choice)
-      ? current.filter((c) => c !== choice)
-      : [...current, choice]
-    onCommit(next)
-  }
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full truncate px-3 py-2 text-left text-sm text-gray-700 hover:bg-amber-50"
-      >
-        {current.join(', ') || '\u00A0'}
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-1 top-1 z-50 mt-px w-56 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
-            {choices.length === 0 && (
-              <p className="px-1 py-1 text-xs text-gray-400">No choices configured.</p>
-            )}
-            {choices.map((choice) => (
-              <label
-                key={choice}
-                className="flex items-center gap-2 rounded px-1 py-1 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={current.includes(choice)}
-                  onChange={() => toggle(choice)}
-                  className="h-4 w-4 accent-indigo-600"
-                />
-                <span className="truncate">{choice}</span>
-              </label>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
 function Grid({ token, tableId }) {
   const [fields, setFields] = useState([])
   const [records, setRecords] = useState([])
@@ -146,6 +105,7 @@ function Grid({ token, tableId }) {
 
   const recordsRef = useRef([])
   const timersRef = useRef({})
+  const [openRecordId, setOpenRecordId] = useState(null)
 
   useEffect(() => {
     recordsRef.current = records
@@ -187,6 +147,36 @@ function Grid({ token, tableId }) {
     },
     [flushRecord],
   )
+
+  async function addFieldChoice(field, name) {
+    const existing = field.options?.choices ?? []
+    if (existing.includes(name)) return field
+    const choices = [...existing, name]
+    const res = await api.updateField(token, field.id, { options: { choices } })
+    setFields((fs) => fs.map((f) => (f.id === field.id ? { ...f, options: { choices } } : f)))
+    return res.field
+  }
+
+  function attachmentValue(recordId, fieldId) {
+    const record = recordsRef.current.find((r) => r.id === recordId)
+    return Array.isArray(record?.data?.[fieldId]) ? record.data[fieldId] : []
+  }
+
+  async function uploadRecordFile(recordId, fieldId, file) {
+    try {
+      const fileData = await api.uploadFile(token, file)
+      const next = [...attachmentValue(recordId, fieldId), fileData]
+      updateCell(recordId, fieldId, next)
+    } catch (err) {
+      setError(err.message)
+      throw err
+    }
+  }
+
+  async function removeRecordFile(recordId, fieldId, index) {
+    const next = attachmentValue(recordId, fieldId).filter((_, i) => i !== index)
+    updateCell(recordId, fieldId, next)
+  }
 
   useEffect(() => {
     if (!token || !tableId) return
@@ -237,6 +227,7 @@ function Grid({ token, tableId }) {
 
   function deleteRow(record) {
     if (!window.confirm('Delete this row?')) return
+    if (openRecordId === record.id) setOpenRecordId(null)
     const timers = timersRef.current
     clearTimeout(timers[record.id])
     delete timers[record.id]
@@ -317,36 +308,32 @@ function Grid({ token, tableId }) {
             className="h-4 w-4 accent-indigo-600"
           />
         )
-      case 'single_select': {
-        const choices = field.options?.choices ?? []
+      case 'single_select':
         return (
-          <select
-            value={value ?? ''}
-            onChange={(e) => updateCell(recordId, fieldId, e.target.value || null)}
-            className="w-full bg-transparent px-3 py-2 text-sm text-gray-700 outline-none"
-          >
-            <option value="">—</option>
-            {choices.map((choice) => (
-              <option key={choice} value={choice}>
-                {choice}
-              </option>
-            ))}
-          </select>
+          <SingleSelectControl
+            choices={field.options?.choices ?? []}
+            value={value}
+            onChange={(v) => updateCell(recordId, fieldId, v)}
+            onAddChoice={(name) => addFieldChoice(field, name)}
+          />
         )
-      }
       case 'multi_select':
         return (
-          <MultiSelectCell
-            value={value}
+          <MultiSelectControl
             choices={field.options?.choices ?? []}
-            onCommit={(v) => updateCell(recordId, fieldId, v)}
+            value={value}
+            onChange={(v) => updateCell(recordId, fieldId, v)}
+            onAddChoice={(name) => addFieldChoice(field, name)}
           />
         )
       case 'attachment':
         return (
-          <div className="px-3 py-2 text-xs text-gray-400">
-            {Array.isArray(value) ? `${value.length} file(s)` : ''}
-          </div>
+          <AttachmentControl
+            compact
+            value={value}
+            onUpload={(file) => uploadRecordFile(recordId, fieldId, file)}
+            onRemove={(i) => removeRecordFile(recordId, fieldId, i)}
+          />
         )
       case 'linked_record':
         return (
@@ -372,6 +359,7 @@ function Grid({ token, tableId }) {
   }
 
   const loading = loadedFor !== tableId
+  const openRecord = records.find((r) => r.id === openRecordId) || null
 
   return (
     <div className="flex h-full flex-col">
@@ -481,6 +469,13 @@ function Grid({ token, tableId }) {
                   })}
                   <td className="border-b border-gray-200 px-1 align-middle">
                     <button
+                      onClick={() => setOpenRecordId(record.id)}
+                      className="inline-flex items-center rounded px-1.5 py-1 text-gray-300 transition group-hover:text-gray-600 hover:bg-gray-100 hover:text-gray-700"
+                      title="Open record"
+                    >
+                      ⤢
+                    </button>
+                    <button
                       onClick={() => deleteRow(record)}
                       className="px-1 py-1 text-xs text-gray-300 transition group-hover:text-red-500"
                       title="Delete row"
@@ -583,6 +578,19 @@ function Grid({ token, tableId }) {
             </form>
           </div>
 </div>
+        )}
+
+        {openRecord && (
+          <RecordModal
+            record={openRecord}
+            fields={fields}
+            onFieldChange={(fieldId, value) => updateCell(openRecord.id, fieldId, value)}
+            onAddChoice={addFieldChoice}
+            onUploadFile={(fieldId, file) => uploadRecordFile(openRecord.id, fieldId, file)}
+            onRemoveFile={(fieldId, index) => removeRecordFile(openRecord.id, fieldId, index)}
+            onDelete={() => deleteRow(openRecord)}
+            onClose={() => setOpenRecordId(null)}
+          />
         )}
         </>
       )}

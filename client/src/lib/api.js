@@ -52,6 +52,8 @@ export const api = {
     }),
   renameField: (token, id, name) =>
     request(`/api/fields/${id}`, { method: 'PATCH', token, body: { name } }),
+  updateField: (token, id, updates) =>
+    request(`/api/fields/${id}`, { method: 'PATCH', token, body: updates }),
   deleteField: (token, id) => request(`/api/fields/${id}`, { method: 'DELETE', token }),
   records: (token, tableId) => request(`/api/tables/${tableId}/records`, { token }),
   createRecord: (token, tableId, data = {}) =>
@@ -59,4 +61,18 @@ export const api = {
   updateRecord: (token, id, data) =>
     request(`/api/records/${id}`, { method: 'PATCH', token, body: { data } }),
   deleteRecord: (token, id) => request(`/api/records/${id}`, { method: 'DELETE', token }),
+  uploadFile: async (token, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`${API_BASE}/api/files`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(data.error || `Upload failed with status ${res.status}`)
+    }
+    return data
+  },
 }
