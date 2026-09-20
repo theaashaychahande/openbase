@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { api } from '../lib/api'
 
@@ -41,6 +41,12 @@ function Home() {
           <h1 className="text-xl font-semibold text-gray-900">openbase</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{user.email}</span>
+            <Link
+              to="/settings"
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+            >
+              Settings
+            </Link>
             <button
               onClick={logout}
               className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
@@ -71,7 +77,10 @@ function Home() {
               key={cred.id}
               className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3"
             >
-              <span className="text-sm font-medium text-gray-900">{cred.type}</span>
+              <div>
+                <span className="text-sm font-medium text-gray-900">{cred.type}</span>
+                <p className="mt-0.5 font-mono text-xs text-gray-500">{cred.masked_value}</p>
+              </div>
               <span className="text-xs text-gray-400">{new Date(cred.created_at).toLocaleString()}</span>
             </li>
           ))}

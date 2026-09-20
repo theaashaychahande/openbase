@@ -25,4 +25,10 @@ export const api = {
     request('/api/auth/login', { method: 'POST', body: { email, password } }),
   me: (token) => request('/api/auth/me', { token }),
   credentials: (token) => request('/api/credentials', { token }),
+  createCredential: (token, { type, name, value }) =>
+    request('/api/credentials', { method: 'POST', token, body: { type, name, value } }),
+  deleteCredential: (token, id) =>
+    request(`/api/credentials/${id}`, { method: 'DELETE', token }),
+  testCredential: (token, { type, value }) =>
+    request('/api/credentials/test', { method: 'POST', token, body: { type, value } }),
 }
