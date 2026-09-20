@@ -43,4 +43,20 @@ export const api = {
   renameTable: (token, id, name) =>
     request(`/api/tables/${id}`, { method: 'PATCH', token, body: { name } }),
   deleteTable: (token, id) => request(`/api/tables/${id}`, { method: 'DELETE', token }),
+  fields: (token, tableId) => request(`/api/tables/${tableId}/fields`, { token }),
+  createField: (token, tableId, { name, type, options, position }) =>
+    request(`/api/tables/${tableId}/fields`, {
+      method: 'POST',
+      token,
+      body: { name, type, options, position },
+    }),
+  renameField: (token, id, name) =>
+    request(`/api/fields/${id}`, { method: 'PATCH', token, body: { name } }),
+  deleteField: (token, id) => request(`/api/fields/${id}`, { method: 'DELETE', token }),
+  records: (token, tableId) => request(`/api/tables/${tableId}/records`, { token }),
+  createRecord: (token, tableId, data = {}) =>
+    request(`/api/tables/${tableId}/records`, { method: 'POST', token, body: { data } }),
+  updateRecord: (token, id, data) =>
+    request(`/api/records/${id}`, { method: 'PATCH', token, body: { data } }),
+  deleteRecord: (token, id) => request(`/api/records/${id}`, { method: 'DELETE', token }),
 }

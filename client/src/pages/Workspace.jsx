@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { api } from '../lib/api'
+import Grid from '../components/Grid'
 import Sidebar from '../components/Sidebar'
 import TableTabs from '../components/TableTabs'
 
@@ -182,11 +183,9 @@ function Workspace() {
                 onDelete={actions.deleteTable}
                 onSelect={(id) => navigate(`/app/${baseId}/${id}`)}
               />
-              <div className="flex-1 overflow-auto bg-white p-4">
+              <div className="flex-1 overflow-hidden bg-white">
                 {tableId ? (
-                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-gray-300">
-                    <p className="text-sm text-gray-400">Grid view is coming soon.</p>
-                  </div>
+                  <Grid key={tableId} token={token} tableId={tableId} />
                 ) : (
                   <div className="flex h-full items-center justify-center">
                     <p className="text-sm text-gray-400">Select a table to open the grid.</p>
